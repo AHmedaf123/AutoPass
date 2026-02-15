@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Job Auto-Applier - OAuth Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .btn {
+            background-color: #4285f4;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+            width: 100%;
+        }
+        .btn:hover {
+            background-color: #3367d6;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .loading {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI Job Auto-Applier</h1>
+        <p>Secure OAuth-based authentication for Indeed and Glassdoor job applications.</p>
+
+        <!-- Google OAuth Login -->
+        <div id="google-login-section">
+            <h2>Step 1: Authenticate with Google</h2>
+            <button id="google-login-btn" class="btn">Sign in with Google</button>
+        </div>
+
+        <!-- Indeed Credentials -->
+        <div id="indeed-section" style="display: none;">
+            <h2>Step 2: Add Indeed Credentials</h2>
+            <form id="indeed-form">
+                <div class="form-group">
+                    <label for="indeed-username">Indeed Email/Username:</label>
+                    <input type="email" id="indeed-username" required>
+                </div>
+                <div class="form-group">
+                    <label for="indeed-password">Indeed Password:</label>
+                    <input type="password" id="indeed-password" required>
+                </div>
+                <button type="submit" class="btn">Save Indeed Credentials</button>
+            </form>
+        </div>
+
+        <!-- Glassdoor Credentials -->
+        <div id="glassdoor-section" style="display: none;">
+            <h2>Step 3: Add Glassdoor Credentials</h2>
+            <form id="glassdoor-form">
+                <div class="form-group">
+                    <label for="glassdoor-username">Glassdoor Email/Username:</label>
+                    <input type="email" id="glassdoor-username" required>
+                </div>
+                <div class="form-group">
+                    <label for="glassdoor-password">Glassdoor Password:</label>
+                    <input type="password" id="glassdoor-password" required>
+                </div>
+                <button type="submit" class="btn">Save Glassdoor Credentials</button>
+            </form>
+        </div>
+
+        <!-- Session Creation -->
+        <div id="session-section" style="display: none;">
+            <h2>Step 4: Create Job Application Session</h2>
+            <button id="indeed-session-btn" class="btn">Start Indeed Job Applications</button>
+            <button id="glassdoor-session-btn" class="btn">Start Glassdoor Job Applications</button>
+        </div>
+
+        <!-- Status Messages -->
+        <div id="status" class="status" style="display: none;"></div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = 'http://localhost:8000/api/v1';
+        let userId = null;
+        let accessToken = null;
+
+        // DOM elements
+        const googleLoginBtn = document.getElementById('google-login-btn');
+        const indeedSection = document.getElementById('indeed-section');
+        const glassdoorSection = document.getElementById('glassdoor-section');
+        const sessionSection = document.getElementById('session-section');
+        const statusDiv = document.getElementById('status');
+
+        // Utility functions
+        function showStatus(message, type = 'success') {
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function showLoading(message) {
+            showStatus(message, 'loading');
+        }
+
+        async function makeRequest(url, options = {}) {
+            const response = await fetch(url, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(accessToken && { 'Authorization': `Bearer ${accessToken}` }),
+                    ...options.headers
+                },
+                ...options
+            });
+
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+                throw new Error(error.detail || `HTTP ${response.status}`);
+            }
+
+            return response.json();
+        }
+
+        // Google OAuth flow
+        googleLoginBtn.addEventListener('click', async () => {
+            try {
+                showLoading('Initiating Google OAuth...');
+
+                // Get authorization URL
+                const { auth_url } = await makeRequest(`${API_BASE}/auth/google/login`);
+
+                // Redirect to Google OAuth
+                window.location.href = auth_url;
+
+            } catch (error) {
+                showStatus(`Google OAuth failed: ${error.message}`, 'error');
+            }
+        });
+
+        // Check if we have OAuth callback parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const state = urlParams.get('state');
+
+        if (code) {
+            // Handle OAuth callback
+            handleOAuthCallback(code, state);
+        }
+
+        async function handleOAuthCallback(code, state) {
+            try {
+                showLoading('Completing Google authentication...');
+
+                // Exchange code for tokens
+                const authData = await makeRequest(`${API_BASE}/auth/google/callback?code=${code}&state=${state}`);
+
+                userId = authData.user_id;
+                accessToken = authData.access_token;
+
+                showStatus('Successfully authenticated with Google!', 'success');
+
+                // Show next steps
+                document.getElementById('google-login-section').style.display = 'none';
+                indeedSection.style.display = 'block';
+                glassdoorSection.style.display = 'block';
+
+                // Clean URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+
+            } catch (error) {
+                showStatus(`Authentication failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Indeed credentials form
+        document.getElementById('indeed-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = document.getElementById('indeed-username').value;
+            const password = document.getElementById('indeed-password').value;
+
+            try {
+                showLoading('Encrypting and storing Indeed credentials...');
+
+                const formData = new FormData();
+                formData.append('uid', userId);
+                formData.append('indeed_username', username);
+                formData.append('indeed_password', password);
+
+                const response = await fetch(`${API_BASE}/auth/indeed/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+                showStatus('Indeed credentials stored securely!', 'success');
+
+                // Check if both credentials are set
+                checkCredentialsComplete();
+
+            } catch (error) {
+                showStatus(`Failed to save Indeed credentials: ${error.message}`, 'error');
+            }
+        });
+
+        // Glassdoor credentials form
+        document.getElementById('glassdoor-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = document.getElementById('glassdoor-username').value;
+            const password = document.getElementById('glassdoor-password').value;
+
+            try {
+                showLoading('Encrypting and storing Glassdoor credentials...');
+
+                const formData = new FormData();
+                formData.append('uid', userId);
+                formData.append('glassdoor_username', username);
+                formData.append('glassdoor_password', password);
+
+                const response = await fetch(`${API_BASE}/auth/glassdoor/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+                showStatus('Glassdoor credentials stored securely!', 'success');
+
+                // Check if both credentials are set
+                checkCredentialsComplete();
+
+            } catch (error) {
+                showStatus(`Failed to save Glassdoor credentials: ${error.message}`, 'error');
+            }
+        });
+
+        function checkCredentialsComplete() {
+            // For demo purposes, assume credentials are complete after any save
+            // In production, you'd check with the backend
+            sessionSection.style.display = 'block';
+        }
+
+        // Session creation
+        document.getElementById('indeed-session-btn').addEventListener('click', async () => {
+            try {
+                showLoading('Creating Indeed job application session...');
+
+                const formData = new FormData();
+                formData.append('user_id', userId);
+                formData.append('indeed', 'true');
+                formData.append('headless', 'false');
+
+                const response = await fetch(`${API_BASE}/auth/session`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+                showStatus(`Indeed session created! Session ID: ${result.session_id}`, 'success');
+
+            } catch (error) {
+                showStatus(`Failed to create Indeed session: ${error.message}`, 'error');
+            }
+        });
+
+        document.getElementById('glassdoor-session-btn').addEventListener('click', async () => {
+            try {
+                showLoading('Creating Glassdoor job application session...');
+
+                const formData = new FormData();
+                formData.append('user_id', userId);
+                formData.append('glassdoor', 'true');
+                formData.append('headless', 'false');
+
+                const response = await fetch(`${API_BASE}/auth/session`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+                showStatus(`Glassdoor session created! Session ID: ${result.session_id}`, 'success');
+
+            } catch (error) {
+                showStatus(`Failed to create Glassdoor session: ${error.message}`, 'error');
+            }
+        });
+
+        // Check if user is already authenticated (from localStorage or similar)
+        const storedUserId = localStorage.getItem('userId');
+        const storedToken = localStorage.getItem('accessToken');
+
+        if (storedUserId && storedToken) {
+            userId = storedUserId;
+            accessToken = storedToken;
+
+            // Show appropriate sections
+            document.getElementById('google-login-section').style.display = 'none';
+            indeedSection.style.display = 'block';
+            glassdoorSection.style.display = 'block';
+            sessionSection.style.display = 'block';
+
+            showStatus('Welcome back! You are already authenticated.', 'success');
+        }
+    </script>
+</body>
+</html>

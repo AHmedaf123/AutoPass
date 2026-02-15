@@ -1,0 +1,103 @@
+{
+  "basic_info": {
+    "content": {
+      "first_name": "{{first_name}}",
+      "last_name": "{{last_name}}",
+      "phone_number": "{{phone_number}}",
+      "email": "{{email}}",
+      "linkedin": "{{linkedin}}",
+      "github": "{{github}}",
+      "portfolio": "{{portfolio}}"
+    }
+  },
+
+  "summary": {
+    "content": "{{summary}}"
+  },
+
+  "skills": {
+    "content": {
+      "technical": "{{technical_skills}}",
+      "tools": "{{tools}}",
+      "other": "{{other_skills}}"
+    }
+  },
+
+  "experience": {
+    "content": [
+      {
+        "role": "{{role1}}",
+        "company": "{{company1}}",
+        "start_date": "{{start_date1}}",
+        "end_date": "{{end_date1}}",
+        "description": "{{description1}}"
+      },
+      {
+        "role": "{{role2}}",
+        "company": "{{company2}}",
+        "start_date": "{{start_date2}}",
+        "end_date": "{{end_date2}}",
+        "description": "{{description2}}"
+      }
+    ]
+  },
+
+  "education": {
+    "content": [
+      {
+        "institution_name": "{{institution_name1}}",
+        "degree": "{{degree1}}",
+        "program": "{{program1}}",
+        "gpa": "{{gpa1}}",
+        "start_date": "{{start_date3}}",
+        "end_date": "{{end_date3}}",
+        "core_subjects": "{{core_subjects1}}",
+        "description": "{{description3}}",
+        "achievements": "{{achievements1}}"
+      },
+      {
+        "institution_name": "{{institution_name2}}",
+        "degree": "{{degree2}}",
+        "program": "{{program2}}",
+        "gpa": "{{gpa2}}",
+        "start_date": "{{start_date4}}",
+        "end_date": "{{end_date4}}",
+        "core_subjects": "{{core_subjects2}}",
+        "description": "{{description4}}",
+        "achievements": "{{achievements2}}"
+      }
+    ]
+  },
+
+  "projects": {
+    "content": [
+      {
+        "project_name": "{{project_name1}}",
+        "company": "{{project_company1}}",
+        "start_date": "{{project_start_date1}}",
+        "end_date": "{{project_end_date1}}",
+        "description": "{{project_description1}}"
+      },
+      {
+        "project_name": "{{project_name2}}",
+        "company": "{{project_company2}}",
+        "start_date": "{{project_start_date2}}",
+        "end_date": "{{project_end_date2}}",
+        "description": "{{project_description2}}"
+      }
+    ]
+  },
+
+  "languages": {
+    "content": [
+      {
+        "language": "{{language1}}",
+        "proficiency": "{{proficiency1}}"
+      },
+      {
+        "language": "{{language2}}",
+        "proficiency": "{{proficiency2}}"
+      }
+    ]
+  }
+}
