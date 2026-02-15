@@ -138,4 +138,3 @@ docker run -p 8000:8000 --env-file .env autopass
 - Check environment variables are loaded correctly
 - Verify Playwright browsers are installed
 - Check logs for Socket.IO connection issues</content>
-<parameter name="filePath">E:\JOB\Auto-Applier\AutoPASS\README.md
